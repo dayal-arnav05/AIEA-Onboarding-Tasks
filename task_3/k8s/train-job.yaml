@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ardayal-cifar10-job
+  labels:
+    app: ardayal-cifar10
+spec:
+  # Number of times to retry if the job fails
+  backoffLimit: 3
+  
+  template:
+    metadata:
+      labels:
+        app: ardayal-cifar10
+    spec:
+      restartPolicy: OnFailure
+      
+      containers:
+      - name: cifar10-trainer
+        # Replace with your actual image name after building
+        image: arnavdayal/cifar10-trainer:latest
+        imagePullPolicy: Always
+        
+        command: ["python", "cifar10train.py"]
+        
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+          limits:
+            memory: "8Gi"
+            cpu: "4"
+            # Uncomment if you have GPU access
+            # nvidia.com/gpu: "1"
+        
+        # Optional: Mount PVC for persistent data storage
+        # Uncomment if you want data/models to persist after job deletion
+        # volumeMounts:
+        # - name: data-storage
+        #   mountPath: /workspace/data
+        
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+      
+      # Optional: Persistent volume for data/models
+      # Uncomment to use the PVC for persistent storage
+      # volumes:
+      # - name: data-storage
+      #   persistentVolumeClaim:
+      #     claimName: cruzid-task3
+

@@ -1,2 +1,11 @@
 openai
 python-dotenv
+torch
+torchvision
+torchaudio
+numpy
+matplotlib
+pandas
+scikit-learn
+scikit-image
+scikit-image
