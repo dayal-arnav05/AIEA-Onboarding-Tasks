@@ -1,0 +1,12 @@
+# Logic-LM Requirements
+# Based on paper: https://arxiv.org/abs/2305.12295
+
+# PySwip for Prolog integration (use GitHub version for Python 3.13+ compatibility)
+git+https://github.com/yuce/pyswip@master
+
+# OpenAI for LLM integration
+openai>=1.0.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+

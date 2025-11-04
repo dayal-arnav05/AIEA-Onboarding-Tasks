@@ -1,0 +1,4 @@
+# pyswip==0.2.10 has issues with Python 3.13
+# Install from GitHub master branch instead
+git+https://github.com/yuce/pyswip@master
+
