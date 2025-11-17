@@ -34,9 +34,34 @@ class Fact:
         return self.predicate
     
     def substitute(self, bindings: Dict[str, str]) -> 'Fact':
-        """Apply variable bindings to this fact."""
-        new_args = tuple(bindings.get(arg, arg) for arg in self.args)
-        return Fact(self.predicate, *new_args)
+        """Apply variable bindings to this fact, following chains of bindings."""
+        new_args = []
+        for arg in self.args:
+            # Follow the chain of bindings to get the final value
+            value = arg
+            seen = {arg}
+            while value in bindings:
+                if value in seen and value != arg:
+                    break  # Avoid infinite loops
+                next_value = bindings[value]
+                if next_value == value:
+                    break
+                seen.add(value)
+                value = next_value
+            new_args.append(value)
+        return Fact(self.predicate, *tuple(new_args))
+    
+    def _resolve_binding(self, var: str, bindings: Dict[str, str]) -> str:
+        """Follow the chain of bindings to get the final value."""
+        value = var
+        seen = {var}
+        while value in bindings:
+            next_value = bindings[value]
+            if next_value == value or next_value in seen:
+                break
+            seen.add(next_value)
+            value = next_value
+        return value
     
     def match(self, other: 'Fact', bindings: Optional[Dict[str, str]] = None) -> Optional[Dict[str, str]]:
         """
@@ -55,30 +80,24 @@ class Fact:
             return None
         
         for self_arg, other_arg in zip(self.args, other.args):
-            # If both are variables
-            if self_arg.startswith('?') and other_arg.startswith('?'):
-                if self_arg in bindings:
-                    if bindings[self_arg] != other_arg and not other_arg.startswith('?'):
-                        return None
-                else:
-                    bindings[self_arg] = other_arg
-            # If self_arg is a variable
-            elif self_arg.startswith('?'):
-                if self_arg in bindings:
-                    if bindings[self_arg] != other_arg:
-                        return None
-                else:
-                    bindings[self_arg] = other_arg
-            # If other_arg is a variable
-            elif other_arg.startswith('?'):
-                if other_arg in bindings:
-                    if bindings[other_arg] != self_arg:
-                        return None
-                else:
-                    bindings[other_arg] = self_arg
+            # Resolve bindings for both arguments
+            resolved_self = self._resolve_binding(self_arg, bindings) if self_arg.startswith('?') else self_arg
+            resolved_other = self._resolve_binding(other_arg, bindings) if other_arg.startswith('?') else other_arg
+            
+            # If both are variables (after resolution)
+            if resolved_self.startswith('?') and resolved_other.startswith('?'):
+                if resolved_self != resolved_other:
+                    # Bind one to the other
+                    bindings[resolved_self] = resolved_other
+            # If resolved_self is a variable
+            elif resolved_self.startswith('?'):
+                bindings[resolved_self] = resolved_other
+            # If resolved_other is a variable
+            elif resolved_other.startswith('?'):
+                bindings[resolved_other] = resolved_self
             # Both are constants
             else:
-                if self_arg != other_arg:
+                if resolved_self != resolved_other:
                     return None
         
         return bindings
@@ -220,6 +239,9 @@ class BackwardChainer:
                 matched_hypothesis = hypothesis.substitute(match_bindings)
                 self.proved_goals.add(matched_hypothesis)
                 results.append(match_bindings)
+            elif self.trace and fact.predicate == hypothesis.predicate:
+                # Debug: show why match failed for same predicate
+                pass  # Silently skip to avoid clutter
         
         # Step 2: Try to prove using rules (backward chain through rules)
         for rule in self.kb.rules:
